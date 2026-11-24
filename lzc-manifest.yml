@@ -1,0 +1,68 @@
+application:
+  subdomain: netbootxyz
+  multi_instance: false
+  public_path:
+    - /
+  upstreams:
+    - location: /
+      backend: http://netbootxyz:3000/
+  # TFTP 引导入口：DHCP next-server 指向懒猫主机 IP 后，客户端从 69/UDP 拉引导文件
+  ingress:
+    - protocol: udp
+      port: 69
+      service: netbootxyz
+      description: "TFTP boot service (set DHCP next-server to this host)"
+    - protocol: tcp
+      port: 80
+      service: netbootxyz
+      description: "Local asset mirror (HTTP): iPXE menu and asset downloads after live_endpoint is pointed here"
+      yes_i_want_80_443: true
+services:
+  netbootxyz:
+    # ghcr.io/netbootxyz/netbootxyz:latest@sha256:38dbd0bb1c6be8fa6449b5ea3b1a75e4a834dc538a9b5f2e23b2aa5deed828ce (upstream official multi-arch image)
+    image: ghcr.1ms.run/netbootxyz/netbootxyz:latest@sha256:38dbd0bb1c6be8fa6449b5ea3b1a75e4a834dc538a9b5f2e23b2aa5deed828ce
+    environment:
+      - NGINX_PORT=80
+      - WEB_APP_PORT=3000
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Shanghai
+    binds:
+      - /lzcapp/var/netbootxyz/config:/config
+      - /lzcapp/var/netbootxyz/assets:/assets
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -fsS
+        - http://localhost:3000/
+      interval: 30s
+      timeout: 10s
+      # 首次启动需从 GitHub 下载菜单与引导文件，留足等待窗口
+      start_period: 180s
+      retries: 10
+usage: |
+  netboot.xyz 把几十种操作系统的安装器汇总成一个网络启动（PXE）菜单：
+  局域网里的电脑开机时选择从网络启动，就能直接挑选并安装系统，不用做 U 盘。
+
+  首次启动：
+  1. 打开应用等待就绪。第一次启动会从 GitHub 下载引导菜单（约几分钟，
+     视网络情况而定）；之后菜单缓存在本机，启动不再重复下载。
+  2. 在路由器（或局域网 DHCP 服务器）上把「下一服务器 / next-server」
+     指向懒猫主机的 IP，引导文件名按客户端类型填：
+       - 普通 BIOS 老机器：netboot.xyz.kpxe
+       - UEFI x86_64：netboot.xyz.efi
+       - UEFI arm64：netboot.xyz-arm64.efi
+     具体配置方法见 https://netboot.xyz/docs/docker/dhcp
+  3. 局域网机器开机选择网络启动（PXE），会出现 netboot.xyz 菜单。
+
+  说明：
+  - Web 管理界面（本应用入口）用于更新菜单版本、把各系统的安装镜像
+    下载到本机缓存（Assets 本地镜像），装系统时不再从公网拉取，速度快很多。
+    想启用本地缓存，在 Web 界面的 local-vars.ipxe 里把 live_endpoint
+    改成 http://懒猫主机IP（资产服务已在主机 80 端口暴露，iPXE 引导链
+    会从这个地址加载菜单与镜像）。
+  - 引导链端口：TFTP 69/UDP（引导文件）+ HTTP 80（菜单与镜像），两路
+    都已暴露；不配置本地缓存时菜单默认走公网 netboot.xyz，也可运行。
+  - 本应用不提供 DHCP 服务：引导需要现有 DHCP 服务器配合（家用路由器
+    通常支持自定义 next-server / boot file name）。

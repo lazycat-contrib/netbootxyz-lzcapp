@@ -1,0 +1,20 @@
+package: community.lazycat.app.netbootxyz
+version: 3.0.3
+name: netboot.xyz
+description: "Your favorite operating systems in one place: network-based bootable operating system installer (PXE) based on iPXE. Boot installers for dozens of systems over the network without USB drives."
+min_os_version: 1.5.0
+author: netbootxyz
+license: Apache-2.0
+homepage: https://netboot.xyz
+
+permissions:
+  required:
+    - net.internet
+
+locales:
+  zh:
+    name: "netboot.xyz"
+    description: "把几十种操作系统的安装器放进一个网络启动菜单（PXE/iPXE）：无需 U 盘，同一局域网内的机器开机即可选择并安装系统。提供 Web 管理界面、本地资产镜像加速与 TFTP 引导服务。"
+  en:
+    name: "netboot.xyz"
+    description: "Your favorite operating systems in one place: network-based bootable operating system installer (PXE) based on iPXE. Boot installers for dozens of systems over the network without USB drives."
